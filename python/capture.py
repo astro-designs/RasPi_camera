@@ -72,10 +72,13 @@ def Capture(PreviewWait = 0, Delay = 0):
 	
 	TimeNow = time.time()
 	NextCaptureTime = TimeNow + Delay
-	#camera.start_preview()
+
+	print("Starting preview...")
+	camera.start_preview()
 	
 	for i in range(NumFrames):
-		camera.start_preview()
+		#print("Starting preview...")
+		#camera.start_preview()
 
 		# Delay for countdown timer or FrameInterval
 		StatusLEDFast = False
@@ -91,57 +94,57 @@ def Capture(PreviewWait = 0, Delay = 0):
 			TimeNow = time.time()
 		
 		# Create filename...	
+		TimeNow = time.time()
 		TimeStr = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime(TimeNow))
 		Filepath = "../media/" + Filename + "_" + TimeStr + ".jpg"
 		print(Filepath)
 		
 		# Hold preview until trigger released if in PreviewTrigger mode...
 		if PreviewWait == 1: # Wait for PreviewTrigger to be released
-			while GPIO.input(PreviewTrigger) == 1:
+			while GPIO.input(PreviewTrigger) == False:
+				StatusLEDFast = not StatusLEDFast
+				GPIO.output(StatusLED, StatusLEDFast)		
 				time.sleep(0.1)
 		
 		# Image capture mode...
 		if Mode == 'image':
+			GPIO.output(StatusLED, True)		
 			print("Capturing image...")
 			camera.capture(Filepath)
 			#camera.capture('/home/pi/Desktop/image%s.jpg' % i)
 		
 		# Video capture mode...
 		elif Mode == 'video':
+			GPIO.output(StatusLED, True)		
 			print("Capturing video...")
 			#camera.start_recording('/home/pi/Desktop/video.h264')
 			time.sleep(VideoDuration)
 			#camera.stop_recording()
 
-		camera.stop_preview()	
+		#print("Stopping preview...")
+		#camera.stop_preview()	
 		GPIO.output(StatusLED, False)
 		NextCaptureTime = NextCaptureTime + FrameInterval
 		time.sleep(3)
 
-	#camera.stop_preview()
+	print("Stopping preview...")
+	camera.stop_preview()
 
 def TriggerMonitor():
 	global TimeNow, NextCaptureTime, Finished
 	
+	print("Wating for trigger...")
+	
 	if Trigger == "GPIO":
-		TimeNow = time.time()
-		StatusLEDSlow = (TimeNow % 2 == 0)
 		if GPIO.input(ImmediateTrigger) == False: # Note trigger is active-low
-			GPIO.output(StatusLED, True)
 			Capture(0,0)
 		elif GPIO.input(PreviewTrigger) == False: # Note trigger is active-low
 			Capture(1,0)
 	
 	elif Trigger == "countdown":
-		if NextCaptureTime - TimeNow > 1:
-			GPIO.output(StatusLED, StatusLEDFast)		
-		else:
-			GPIO.output(StatusLED, StatusLEDSlow)
-		GPIO.output(StatusLED, True)
 		Capture(0, CountdownToFrame)
 
 	elif Trigger == "immediate":
-		GPIO.output(StatusLED, True)
 		Capture(0,0)
 		Finished = True
 
