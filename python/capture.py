@@ -72,12 +72,15 @@ def Capture(PreviewWait = 0, Delay = 0):
 	
 	TimeNow = time.time()
 	NextCaptureTime = TimeNow + Delay
-	camera.start_preview()
+	#camera.start_preview()
 	
 	for i in range(NumFrames):
+		camera.start_preview()
+
 		# Delay for countdown timer or FrameInterval
+		StatusLEDFast = False
 		while TimeNow < NextCaptureTime:
-			print("Waiting...)
+			print("Waiting...")
 			StatusLEDSlow = ((NextCaptureTime - TimeNow) % 2 == 0)
 			StatusLEDFast = not StatusLEDFast
 			if NextCaptureTime - TimeNow > 1:
@@ -89,7 +92,7 @@ def Capture(PreviewWait = 0, Delay = 0):
 		
 		# Create filename...	
 		TimeStr = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime(TimeNow))
-		Filepath = "./media/" + Filename + "_" + TimeStr + ".jpg"
+		Filepath = "../media/" + Filename + "_" + TimeStr + ".jpg"
 		print(Filepath)
 		
 		# Hold preview until trigger released if in PreviewTrigger mode...
@@ -109,11 +112,13 @@ def Capture(PreviewWait = 0, Delay = 0):
 			#camera.start_recording('/home/pi/Desktop/video.h264')
 			time.sleep(VideoDuration)
 			#camera.stop_recording()
-			
+
+		camera.stop_preview()	
 		GPIO.output(StatusLED, False)
 		NextCaptureTime = NextCaptureTime + FrameInterval
+		time.sleep(3)
 
-	camera.stop_preview()
+	#camera.stop_preview()
 
 def TriggerMonitor():
 	global TimeNow, NextCaptureTime, Finished
@@ -128,10 +133,10 @@ def TriggerMonitor():
 			Capture(1,0)
 	
 	elif Trigger == "countdown":
-			if NextCaptureTime - TimeNow > 1:
-				GPIO.output(StatusLED, StatusLEDFast)		
-			else:
-				GPIO.output(StatusLED, StatusLEDSlow)
+		if NextCaptureTime - TimeNow > 1:
+			GPIO.output(StatusLED, StatusLEDFast)		
+		else:
+			GPIO.output(StatusLED, StatusLEDSlow)
 		GPIO.output(StatusLED, True)
 		Capture(0, CountdownToFrame)
 
