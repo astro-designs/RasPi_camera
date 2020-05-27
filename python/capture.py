@@ -73,10 +73,12 @@ def Capture(PreviewWait = 0, Delay = 0):
 	TimeNow = time.time()
 	NextCaptureTime = TimeNow + Delay
 
-	#print("Starting preview...")
-	#camera.start_preview()
+	# Start preview...
+	print("Starting preview...")
+	camera.start_preview()
 	
 	for i in range(NumFrames):
+		# Start preview...
 		#print("Starting preview...")
 		#camera.start_preview()
 
@@ -100,12 +102,12 @@ def Capture(PreviewWait = 0, Delay = 0):
 		print(Filepath)
 		
 		# Start preview...
-		print("Starting preview...")
-		camera.start_preview()
+		#print("Starting preview...")
+		#camera.start_preview()
 		
 		# Camera warm-up time
-		print("Warming up...")
-		time.sleep(2)
+		#print("Warming up...")
+		#time.sleep(2)
 		
 		# Hold preview until trigger released if in PreviewTrigger mode...
 		if PreviewWait == 1: # Wait for PreviewTrigger to be released
@@ -129,14 +131,14 @@ def Capture(PreviewWait = 0, Delay = 0):
 			time.sleep(VideoDuration)
 			#camera.stop_recording()
 
-		print("Stopping preview...")
-		camera.stop_preview()	
+		#print("Stopping preview...")
+		#camera.stop_preview()	
 		GPIO.output(StatusLED, False)
 		NextCaptureTime = NextCaptureTime + FrameInterval
-		time.sleep(3)
+		#time.sleep(3)
 
-	#print("Stopping preview...")
-	#camera.stop_preview()
+	print("Stopping preview...")
+	camera.stop_preview()
 
 def TriggerMonitor():
 	global TimeNow, NextCaptureTime, Finished
