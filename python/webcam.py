@@ -8,7 +8,7 @@ import logging
 import socketserver
 from threading import Condition
 from http import server
-import webcam_conf as conf
+import camera_conf as conf
 
 PAGE=conf.PAGE
 
@@ -71,14 +71,15 @@ class StreamingHandler(server.BaseHTTPRequestHandler):
 class StreamingServer(socketserver.ThreadingMixIn, server.HTTPServer):
     allow_reuse_address = True
     daemon_threads = True
-
-with picamera.PiCamera(resolution=conf.resolution, framerate=conf.framerate) as camera:
+res = str(conf.resolution[0]) + 'x' + str(conf.resolution[0])
+print(res)
+with picamera.PiCamera(resolution=res, framerate=conf.framerate) as camera:
     output = StreamingOutput()
     #Uncomment the next line to change your Pi's Camera rotation (in degrees)
     camera.rotation = conf.rotation
     camera.start_recording(output, format='mjpeg')
     try:
-        address = ('', conf.port)
+        address = ('', conf.webcam_port)
         server = StreamingServer(address, StreamingHandler)
         server.serve_forever()
     finally:
