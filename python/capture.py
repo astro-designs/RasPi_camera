@@ -3,7 +3,9 @@
 from picamera import PiCamera
 import time
 import RPi.GPIO as GPIO
+from ftplib import FTP
 import argparse
+import camera_conf as conf
 
 parser = argparse.ArgumentParser(description='Raspberry Pi Camera Capture Controller')
 
@@ -25,6 +27,8 @@ parser.add_argument('-Caption', action='store', dest='Caption', default='None', 
 
 parser.add_argument('-Mode', action='store', dest='Mode', default='image', help='Capture image or video')
 
+parser.add_argument('-ftp', action='store', dest='ftp', default='no', help='Specify ftp server to send image(s) over ftp')
+
 arguments = parser.parse_args()
 
 # Read arguments...
@@ -35,6 +39,7 @@ Trigger = arguments.Trigger
 CountdownToFrame = float(arguments.Countdown)
 Caption = arguments.Caption
 Mode = arguments.Mode
+ftp_image = arguments.ftp
 Filename = arguments.Filename
 
 # https://projects.raspberrypi.org/en/projects/getting-started-with-picamera/7
@@ -54,9 +59,9 @@ GPIO.output(StatusLED, False)
 
 # Setup camera...
 camera = PiCamera()
-camera.rotation = 0
-#camera.resolution = (640,480)
-camera.framerate = 15
+camera.rotation = conf.rotation
+camera.resolution = conf.resolution
+camera.framerate = conf.framerate
 camera.start_preview(alpha = 200)
 camera.annotate_text_size = 50
 if Caption != "None":
@@ -70,6 +75,11 @@ Finished = False
 def Capture(PreviewWait = 0, Delay = 0):
 	global TimeNow, NextCaptureTime, Filename
 	
+	if ftp_image == 'yes':
+		ftp = FTP(conf.ftp_server)
+		ftp.login(user=conf.ftp_user, passwd = conf.ftp_password)
+		ftp.cwd(conf.ftp_path)
+	   
 	TimeNow = time.time()
 	NextCaptureTime = TimeNow + Delay
 
@@ -98,7 +108,8 @@ def Capture(PreviewWait = 0, Delay = 0):
 		# Create filename...	
 		TimeNow = time.time()
 		TimeStr = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime(TimeNow))
-		Filepath = "../media/" + Filename + "_" + TimeStr + ".jpg"
+		Filename = Filename + "_" + TimeStr + ".jpg"
+		Filepath = "../media/" + Filename
 		print(Filepath)
 		
 		# Start preview...
@@ -121,8 +132,15 @@ def Capture(PreviewWait = 0, Delay = 0):
 			GPIO.output(StatusLED, True)		
 			print("Capturing image...")
 			camera.capture(Filepath)
-			#camera.capture('/home/pi/Desktop/image%s.jpg' % i)
-		
+
+			# ftp image...
+			if ftp_image == 'yes':
+				print("Sending file over ftp")
+				localfile = open(Filepath, 'rb')
+				ftp.storbinary('STOR ' + Filename, localfile)
+				ftp.quit()
+				localfile.close()
+				
 		# Video capture mode...
 		elif Mode == 'video':
 			GPIO.output(StatusLED, True)		
@@ -136,7 +154,7 @@ def Capture(PreviewWait = 0, Delay = 0):
 		GPIO.output(StatusLED, False)
 		NextCaptureTime = NextCaptureTime + FrameInterval
 		#time.sleep(3)
-
+		
 	print("Stopping preview...")
 	camera.stop_preview()
 
