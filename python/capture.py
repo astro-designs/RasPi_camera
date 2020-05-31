@@ -1,4 +1,4 @@
-
+#!/usr/bin/env python
 
 from picamera import PiCamera
 import time
@@ -18,13 +18,14 @@ parser.add_argument('-NumFrames', action='store', dest='NumFrames', default=1,
 parser.add_argument('-FrameInterval', action='store', dest='FrameInterval', default=1, help='Frame-to-frame timing (s)')
 parser.add_argument('-VideoDuration', action='store', dest='VideoDuration', default=10, help='Video recording duration (s)')
 parser.add_argument('-Trigger', action='store', dest='Trigger', default='immediate', help='Trigger option (immediate, GPIO, countdown (s), network')
-parser.add_argument('-Countdown', action='store', dest='Countdown', default=10, help='Frame trigger countdown (s)')
+parser.add_argument('-Countdown', action='store', dest='Countdown', default=0, help='Frame trigger countdown (s)')
 parser.add_argument('-Caption', action='store', dest='Caption', default='None', help='Caption option (text string)')
 parser.add_argument('-Mode', action='store', dest='Mode', default='image', help='Capture image or video')
 parser.add_argument('-ftp', action='store', dest='ftp', default='no', help='Specify ftp server to send image(s) over ftp')
 
 # These next arguments are exactly as supported by the raspistill program:
-#parser.add_argument('-e', action='store', dest='encoding', default='jpg', help='Encoding to use for output file (jpg, bmp, gif, png')
+parser.add_argument('-o', action='store', dest='Filename', default='output.jpg', help='Output file')
+parser.add_argument('-e', action='store', dest='encoding', default='jpg', help='Encoding to use for output file (jpg, bmp, gif, png')
 
 arguments = parser.parse_args()
 
@@ -32,47 +33,70 @@ arguments = parser.parse_args()
 NumFrames = int(arguments.NumFrames)
 FrameInterval = float(arguments.FrameInterval)
 VideoDuration = float(arguments.VideoDuration)
-Trigger = arguments.Trigger
 CountdownToFrame = float(arguments.Countdown)
 Caption = arguments.Caption
 Mode = arguments.Mode
 ftp_image = arguments.ftp
-Filename = arguments.Filename
-#format = arguments.encoding
 
-# https://projects.raspberrypi.org/en/projects/getting-started-with-picamera/7
+# Use filename from configuration file unless argument is not the default value
+if arguments.Filename != 'output.jpg':
+	Filename = arguments.Filename
+else:
+	Filename = conf.Filename
 
+# Use Trigger from configuration file unless argument is not the default value
+if arguments.Trigger != 'immediate':
+	Trigger = arguments.Trigger
+else:
+	Trigger = conf.Trigger
+
+# Use Format from configuration file unless argument is not the default value
+if arguments.encoding != 'jpg':
+	Format = arguments.encoding
+else:
+	Format = conf.format
+	
 # Set the GPIO modes...
 GPIO.setmode(GPIO.BCM)
 GPIO.setwarnings(False)
 
 #Setup the trigger GPIO...
-PreviewTrigger = 2
-ImmediateTrigger = 3
-StatusLED = 4
-GPIO.setup(PreviewTrigger, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-GPIO.setup(ImmediateTrigger, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-GPIO.setup(StatusLED, GPIO.OUT)
-GPIO.output(StatusLED, False)
+PreviewPin = conf.PreviewPin
+CapturePin = conf.CapturePin
+StatusPin = conf.StatusPin
+
+GPIO.setup(PreviewPin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+GPIO.setup(CapturePin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+GPIO.setup(StatusPin, GPIO.OUT)
+GPIO.output(StatusPin, False)
 
 # Setup camera...
 camera = PiCamera()
 camera.rotation = conf.rotation
 camera.resolution = conf.resolution
 camera.framerate = conf.framerate
-camera.format = conf.format
-camera.start_preview(alpha = 200)
 camera.annotate_text_size = 50
-if Caption != "None":
-	camera.annotate_text = Caption
+
+if arguments.Caption != 'None':
+	camera.annotate_text = arguments.Caption
+elif conf.Caption != 'None':
+	camera.annotate_text = conf.Caption
+
+
+# Set filename extension based on selected image format
+x = Filename.split('.')
+File_name = x[0]
+File_ext = Format
 
 # Some misc initialisation...
 TimeNow = time.time()
 NextCaptureTime = TimeNow
 Finished = False
+PreviewActive = False
+StatusPinFast = False
 
-def Capture(PreviewWait = 0, Delay = 0):
-	global TimeNow, NextCaptureTime, Filename
+def Capture(Delay = 0):
+	global TimeNow, NextCaptureTime, File_name, File_ext, PreviewActive
 	
 	if ftp_image == 'yes':
 		ftp = FTP(conf.ftp_server)
@@ -83,54 +107,40 @@ def Capture(PreviewWait = 0, Delay = 0):
 	NextCaptureTime = TimeNow + Delay
 
 	# Start preview...
-	print("Starting preview...")
-	camera.start_preview()
+	if PreviewActive == False:
+		#print("Starting preview...")
+		camera.start_preview()
 	
 	for i in range(NumFrames):
-		# Start preview...
-		#print("Starting preview...")
-		#camera.start_preview()
 
 		# Delay for countdown timer or FrameInterval
-		StatusLEDFast = False
+		StatusPinFast = False
 		while TimeNow < NextCaptureTime:
-			print("Waiting...")
-			StatusLEDSlow = ((NextCaptureTime - TimeNow) % 2 == 0)
-			StatusLEDFast = not StatusLEDFast
-			if NextCaptureTime - TimeNow > 1:
-				GPIO.output(StatusLED, StatusLEDFast)		
+			#print("Waiting...")
+			StatusPinSlow = ((NextCaptureTime - TimeNow) % 2 < 1)
+			StatusPinFast = not StatusPinFast
+			if NextCaptureTime - TimeNow < 1:
+				GPIO.output(StatusPin, StatusPinFast)		
 			else:
-				GPIO.output(StatusLED, StatusLEDSlow)
+				GPIO.output(StatusPin, StatusPinSlow)
 			time.sleep(0.1)
 			TimeNow = time.time()
 		
 		# Create filename...	
 		TimeNow = time.time()
 		TimeStr = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime(TimeNow))
-		Filename = Filename + "_" + TimeStr + ".jpg"
+		Filename = File_name + "_" + TimeStr + '.' + File_ext
 		Filepath = "../media/" + Filename
-		print(Filepath)
-		
-		# Start preview...
-		#print("Starting preview...")
-		#camera.start_preview()
-		
-		# Camera warm-up time
-		#print("Warming up...")
-		#time.sleep(2)
-		
-		# Hold preview until trigger released if in PreviewTrigger mode...
-		if PreviewWait == 1: # Wait for PreviewTrigger to be released
-			while GPIO.input(PreviewTrigger) == False:
-				StatusLEDFast = not StatusLEDFast
-				GPIO.output(StatusLED, StatusLEDFast)		
-				time.sleep(0.1)
-		
+		#print(Filepath)
+				
 		# Image capture mode...
 		if Mode == 'image':
-			GPIO.output(StatusLED, True)		
+			GPIO.output(StatusPin, True)		
 			print("Capturing image...")
-			camera.capture(Filepath)
+			if Format == 'jpg':
+				camera.capture(Filepath, 'jpeg')
+			else:
+				camera.capture(Filepath, Format)
 
 			# ftp image...
 			if ftp_image == 'yes':
@@ -142,39 +152,53 @@ def Capture(PreviewWait = 0, Delay = 0):
 				
 		# Video capture mode...
 		elif Mode == 'video':
-			GPIO.output(StatusLED, True)		
+			GPIO.output(StatusPin, True)		
 			print("Capturing video...")
 			#camera.start_recording('/home/pi/Desktop/video.h264')
 			time.sleep(VideoDuration)
 			#camera.stop_recording()
 
-		#print("Stopping preview...")
-		#camera.stop_preview()	
-		GPIO.output(StatusLED, False)
+		GPIO.output(StatusPin, False)
 		NextCaptureTime = NextCaptureTime + FrameInterval
-		#time.sleep(3)
 		
-	print("Stopping preview...")
-	camera.stop_preview()
+	if PreviewActive == False:
+		#print("Stopping preview...")
+		camera.stop_preview()
 
 def TriggerMonitor():
-	global TimeNow, NextCaptureTime, Finished
+	global TimeNow, NextCaptureTime, Finished, PreviewActive, StatusPinFast
 	
-	print("Wating for trigger...")
+	#print("Waiting for trigger...")
 	
 	if Trigger == "GPIO":
-		if GPIO.input(ImmediateTrigger) == False: # Note trigger is active-low
-			Capture(0,0)
-		elif GPIO.input(PreviewTrigger) == False: # Note trigger is active-low
-			Capture(1,0)
+		if GPIO.input(CapturePin) == False: # Note trigger is active-low
+			Capture(CountdownToFrame)
+		elif GPIO.input(PreviewPin) == False and PreviewActive == False: # Note trigger is active-low
+			# Start preview...
+			#print("Starting preview...")
+			camera.start_preview()
+			PreviewActive = True
+		elif GPIO.input(PreviewPin) == True and PreviewActive == True: # Note trigger is active-low
+			# Stop preview...
+			#print("Stopping preview...")
+			camera.stop_preview()
+			PreviewActive = False
 	
 	elif Trigger == "countdown":
-		Capture(0, CountdownToFrame)
+		Capture(CountdownToFrame)
 
 	elif Trigger == "immediate":
-		Capture(0,0)
+		Capture(CountdownToFrame)
 		Finished = True
-
+		
+	TimeNow = time.time()
+	StatusPinFast = not StatusPinFast
+	if PreviewActive:
+		GPIO.output(StatusPin, StatusPinFast)
+	else:
+		GPIO.output(StatusPin, False)
+	
+	
 	time.sleep(0.1)
 
 try:	
