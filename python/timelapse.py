@@ -1,9 +1,7 @@
+#!/usr/bin/env python
+
 from time import sleep
 import picamera
-#from os import system
-
-#with picamera.PiCamera() as camera:
-#  camera.resolution = (1024, 768)
 
 WAIT_TIME = 5
 
