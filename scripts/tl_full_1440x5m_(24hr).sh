@@ -1,0 +1,6 @@
+# This command will take a photo every 5minutes for 24 hours...
+# Resolution = full
+raspistill -o ../media/image_%04d.jpg -tl 300000 -t 86400000
+
+# This command will construct a video file from the images...
+avconv -r 10 -i ../media/image_%04d.jpg -r 10 -vcodec libx264 -crf 20 -g 15 timelapse.mp4

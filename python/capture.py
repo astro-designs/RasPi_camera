@@ -16,18 +16,15 @@ parser.add_argument('-NumFrames', action='store', dest='NumFrames', default=1,
                     help='Number of frames to capture')
 
 parser.add_argument('-FrameInterval', action='store', dest='FrameInterval', default=1, help='Frame-to-frame timing (s)')
-
 parser.add_argument('-VideoDuration', action='store', dest='VideoDuration', default=10, help='Video recording duration (s)')
-
 parser.add_argument('-Trigger', action='store', dest='Trigger', default='immediate', help='Trigger option (immediate, GPIO, countdown (s), network')
-
 parser.add_argument('-Countdown', action='store', dest='Countdown', default=10, help='Frame trigger countdown (s)')
-
 parser.add_argument('-Caption', action='store', dest='Caption', default='None', help='Caption option (text string)')
-
 parser.add_argument('-Mode', action='store', dest='Mode', default='image', help='Capture image or video')
-
 parser.add_argument('-ftp', action='store', dest='ftp', default='no', help='Specify ftp server to send image(s) over ftp')
+
+# These next arguments are exactly as supported by the raspistill program:
+#parser.add_argument('-e', action='store', dest='encoding', default='jpg', help='Encoding to use for output file (jpg, bmp, gif, png')
 
 arguments = parser.parse_args()
 
@@ -41,6 +38,7 @@ Caption = arguments.Caption
 Mode = arguments.Mode
 ftp_image = arguments.ftp
 Filename = arguments.Filename
+#format = arguments.encoding
 
 # https://projects.raspberrypi.org/en/projects/getting-started-with-picamera/7
 
@@ -62,6 +60,7 @@ camera = PiCamera()
 camera.rotation = conf.rotation
 camera.resolution = conf.resolution
 camera.framerate = conf.framerate
+camera.format = conf.format
 camera.start_preview(alpha = 200)
 camera.annotate_text_size = 50
 if Caption != "None":

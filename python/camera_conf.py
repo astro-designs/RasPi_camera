@@ -17,9 +17,9 @@ PAGE="""\
 #resolution=(1024,768)
 #resolution=(1920,1080)
 #resolution=(1296,972)
-resolution=(2592,1944) # 5MP sensor resolution
+#resolution=(2592,1944) # 5MP sensor resolution
 #resolution=(3280,2464) # 8MP sensor resolution
-#resolution=(4056,3040) # 12.3MP sensor resolution
+resolution=(4056,3040) # 12.3MP sensor resolution
 
 framerate=1
 #framerate=24
@@ -36,11 +36,18 @@ rotation = 90
 #rotation = 180
 #rotation = 270
 
+# Image format:
+format = jpg
+#format = bmp
+#format = tif # Not supported?
+#format = gif
+#format = png
+
 # Webcam settings...
 webcam_port = 8005
 
 # FTP settings...
-ftp_server = 'server'
-ftp_user = 'username'
-ftp_password = 'password'
-ftp_path = 'folder'
+ftp_server = 'ftp.gridhost.co.uk'
+ftp_user = 'ftp@cantrills.com'
+ftp_password = 'L0st!nspace'
+ftp_path = 'public_html/cameras/media'
