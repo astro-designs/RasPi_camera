@@ -50,6 +50,10 @@ format = 'jpg'
 #format = 'gif'
 #format = 'png'
 
+# Video format:
+#format = 'mpg'
+#format = 'h264'
+
 # Webcam settings...
 webcam_port = 8005
 

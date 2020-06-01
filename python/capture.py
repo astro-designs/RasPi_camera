@@ -131,36 +131,40 @@ def Capture(Delay = 0):
 		TimeStr = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime(TimeNow))
 		Filename = File_name + "_" + TimeStr + '.' + File_ext
 		Filepath = "../media/" + Filename
-		#print(Filepath)
 				
 		# Image capture mode...
-		if Mode == 'image':
+		if Format == 'jpg' or Format == 'bmp' or Format == 'gif' or Format == 'png':
 			GPIO.output(StatusPin, True)		
 			print("Capturing image...")
 			if Format == 'jpg':
 				camera.capture(Filepath, 'jpeg')
 			else:
 				camera.capture(Filepath, Format)
+			print("Captured!")
 
-			# ftp image...
-			if ftp_image == 'yes':
-				print("Sending file over ftp")
-				localfile = open(Filepath, 'rb')
-				ftp.storbinary('STOR ' + Filename, localfile)
-				ftp.quit()
-				localfile.close()
-				
 		# Video capture mode...
-		elif Mode == 'video':
+		elif Format == 'mjpeg' or Format == 'h264':
 			GPIO.output(StatusPin, True)		
 			print("Capturing video...")
-			#camera.start_recording('/home/pi/Desktop/video.h264')
+			if Format == 'mjpeg':
+				camera.start_recording(Filepath, 'mjpeg')
+			else:
+				camera.start_recording(Filepath, 'h264')
 			time.sleep(VideoDuration)
-			#camera.stop_recording()
+			camera.stop_recording()
+			print("Captured!")
 
 		GPIO.output(StatusPin, False)
 		NextCaptureTime = NextCaptureTime + FrameInterval
-		
+
+		# ftp image...
+		if ftp_image == 'yes':
+			print("Sending file over ftp")
+			localfile = open(Filepath, 'rb')
+			ftp.storbinary('STOR ' + Filename, localfile)
+			ftp.quit()
+			localfile.close()
+						
 	if PreviewActive == False:
 		#print("Stopping preview...")
 		camera.stop_preview()
