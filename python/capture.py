@@ -9,7 +9,7 @@ import camera_conf as conf
 
 parser = argparse.ArgumentParser(description='Raspberry Pi Camera Capture Controller')
 
-parser.add_argument('-Filename', action='store', dest='Filename', default='image',
+parser.add_argument('-Filename', action='store', dest='Filename', default='output.jpg',
                     help='Name of file to save')
 
 parser.add_argument('-NumFrames', action='store', dest='NumFrames', default=1,

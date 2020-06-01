@@ -13,8 +13,8 @@ PAGE="""\
 filename = 'output.jpg'
 
 # Trigger option
-Trigger = 'immediate'
-#Trigger = 'GPIO'
+#Trigger = 'immediate'
+Trigger = 'GPIO'
 #Trigger = 'countdown'
 
 # Supported resolutions:
