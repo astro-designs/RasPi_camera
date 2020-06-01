@@ -58,10 +58,10 @@ format = 'jpg'
 webcam_port = 8005
 
 # FTP settings...
-ftp_server = 'ftp.gridhost.co.uk'
-ftp_user = 'ftp@cantrills.com'
-ftp_password = 'L0st!nspace'
-ftp_path = 'public_html/cameras/media'
+ftp_server = 'xxx'
+ftp_user = 'xxx'
+ftp_password = 'xxx'
+ftp_path = 'xxx'
 
 #Define the (BCM) pins used for trigger & status...
 PreviewPin = 2
