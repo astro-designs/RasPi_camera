@@ -21,7 +21,7 @@ parser.add_argument('-Trigger', action='store', dest='Trigger', default='immedia
 parser.add_argument('-Countdown', action='store', dest='Countdown', default=0, help='Frame trigger countdown (s)')
 parser.add_argument('-Caption', action='store', dest='Caption', default='None', help='Caption option (text string)')
 parser.add_argument('-Mode', action='store', dest='Mode', default='image', help='Capture image or video')
-parser.add_argument('-ftp', action='store', dest='ftp', default='no', help='Specify ftp server to send image(s) over ftp')
+parser.add_argument('-ftp', action='store', dest='ftp', default='no', help='Use -ftp yes to send image(s) over ftp')
 
 # These next arguments are exactly as supported by the raspistill program:
 parser.add_argument('-o', action='store', dest='Filename', default='output.jpg', help='Output file')
@@ -64,11 +64,14 @@ GPIO.setwarnings(False)
 PreviewPin = conf.PreviewPin
 CapturePin = conf.CapturePin
 StatusPin = conf.StatusPin
+ReadyPin = conf.ReadyPin
 
 GPIO.setup(PreviewPin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 GPIO.setup(CapturePin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 GPIO.setup(StatusPin, GPIO.OUT)
+GPIO.setup(ReadyPin, GPIO.OUT)
 GPIO.output(StatusPin, False)
+GPIO.output(ReadyPin, False)
 
 # Setup camera...
 camera = PiCamera()
@@ -172,10 +175,12 @@ def Capture(Delay = 0):
 def TriggerMonitor():
 	global TimeNow, NextCaptureTime, Finished, PreviewActive, StatusPinFast
 	
+	GPIO.output(ReadyPin, True)
 	#print("Waiting for trigger...")
 	
 	if Trigger == "GPIO":
 		if GPIO.input(CapturePin) == False: # Note trigger is active-low
+			GPIO.output(ReadyPin, False)
 			Capture(CountdownToFrame)
 		elif GPIO.input(PreviewPin) == False and PreviewActive == False: # Note trigger is active-low
 			# Start preview...
@@ -189,9 +194,11 @@ def TriggerMonitor():
 			PreviewActive = False
 	
 	elif Trigger == "countdown":
+		GPIO.output(ReadyPin, False)
 		Capture(CountdownToFrame)
 
 	elif Trigger == "immediate":
+		GPIO.output(ReadyPin, False)
 		Capture(CountdownToFrame)
 		Finished = True
 		
@@ -201,7 +208,6 @@ def TriggerMonitor():
 		GPIO.output(StatusPin, StatusPinFast)
 	else:
 		GPIO.output(StatusPin, False)
-	
 	
 	time.sleep(0.1)
 

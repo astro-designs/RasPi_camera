@@ -10,7 +10,7 @@ PAGE="""\
 </html>
 """
 # Output filename (can be over-ridden by the -o argument)
-filename = 'output.jpg'
+Filename = 'output.jpg'
 
 # Trigger option
 #Trigger = 'immediate'
@@ -19,16 +19,16 @@ Trigger = 'GPIO'
 
 # Supported resolutions:
 # Be sure to set the resolution in the html above to the same resolution
-#resolution=(640,480)
+resolution=(640,480)
 #resolution=(800,600)
 #resolution=(1024,768)
-resolution=(1920,1080)
+#resolution=(1920,1080)
 #resolution=(1296,972)
 #resolution=(2592,1944) # 5MP sensor resolution
 #resolution=(3280,2464) # 8MP sensor resolution
 #resolution=(4056,3040) # 12.3MP sensor resolution
 
-framerate=1
+framerate=4
 #framerate=24
 #framerate=48
 #framerate=25
@@ -67,6 +67,7 @@ ftp_path = 'xxx'
 PreviewPin = 2
 CapturePin = 3
 StatusPin = 4
+ReadyPin = 17
 
 # Add caption to image or video (use 'None' for no caption)
 Caption = 'None'
