@@ -73,16 +73,33 @@ class StreamingHandler(server.BaseHTTPRequestHandler):
 class StreamingServer(socketserver.ThreadingMixIn, server.HTTPServer):
     allow_reuse_address = True
     daemon_threads = True
-res = str(conf.resolution[0]) + 'x' + str(conf.resolution[0])
-print(res)
-with picamera.PiCamera(resolution=res, framerate=conf.framerate) as camera:
-    output = StreamingOutput()
-    #Uncomment the next line to change your Pi's Camera rotation (in degrees)
-    camera.rotation = conf.rotation
-    camera.start_recording(output, format='mjpeg')
-    try:
+
+def Webcam():
+    global camera, output, server
+    #camera = picamera.PiCamera()
+    with camera:
+        output = StreamingOutput()
+
+        camera.resolution = conf.resolution
+        camera.framerate = conf.framerate
+        camera.rotation = conf.rotation
+
+        camera.start_recording(output, format='mjpeg')
+        #try:
         address = ('', conf.webcam_port)
         server = StreamingServer(address, StreamingHandler)
         server.serve_forever()
-    finally:
+        #finally:
         camera.stop_recording()
+	
+# Setup camera...
+camera = picamera.PiCamera()
+camera.rotation = conf.rotation
+camera.resolution = conf.resolution
+camera.framerate = conf.framerate
+camera.annotate_text_size = 50
+
+res = str(conf.resolution[0]) + 'x' + str(conf.resolution[1])
+print(res)
+
+Webcam()
