@@ -12,14 +12,24 @@ from threading import Condition
 from http import server
 import camera_conf as conf
 
+debug_sts = 0
+def print_sts():
+    global debug_sts
+    print(debug_sts)
+    debug_sts = debug_sts + 1
+
+print_sts()
+	
+# Custom argparse action to load arguments from file...
+#class LoadFromFile (argparse.Action):
+#    def __call__ (self, parser, namespace, values, option_string = None):
+#        with values as f:
+#            parser.parse_args(f.read().split(), namespace)
+
 parser = argparse.ArgumentParser(description='Raspberry Pi Camera Capture Controller')
 
-parser.add_argument('-Filename', action='store', dest='Filename', default='output.jpg',
-                    help='Name of file to save')
-
-parser.add_argument('-NumFrames', action='store', dest='NumFrames', default=1,
-                    help='Number of frames to capture')
-
+parser.add_argument('-NumFrames', action='store', dest='NumFrames', default=1, help='Number of frames to capture')
+parser.add_argument('-cf', action='store', dest='config_fie', default='camera_conf', help='Configuration File')
 parser.add_argument('-FrameInterval', action='store', dest='FrameInterval', default=1, help='Frame-to-frame timing (s)')
 parser.add_argument('-VideoDuration', action='store', dest='VideoDuration', default=10, help='Video recording duration (s)')
 parser.add_argument('-Trigger', action='store', dest='Trigger', default='immediate', help='Trigger option (immediate, GPIO, countdown (s), network')
@@ -27,6 +37,7 @@ parser.add_argument('-Countdown', action='store', dest='Countdown', default=0, h
 parser.add_argument('-Caption', action='store', dest='Caption', default='None', help='Caption option (text string)')
 parser.add_argument('-Mode', action='store', dest='Mode', default='image', help='Capture image or video')
 parser.add_argument('-ftp', action='store', dest='ftp', default='no', help='Use -ftp yes to send image(s) over ftp')
+#parser.add_argument('-file', type=open, action=LoadFromFile)
 
 # These next arguments are exactly as supported by the raspistill program:
 parser.add_argument('-o', action='store', dest='Filename', default='output.jpg', help='Output file')
@@ -35,6 +46,7 @@ parser.add_argument('-e', action='store', dest='encoding', default='jpg', help='
 arguments = parser.parse_args()
 
 # Read arguments...
+#config_file = arguments.cf
 NumFrames = int(arguments.NumFrames)
 FrameInterval = float(arguments.FrameInterval)
 VideoDuration = float(arguments.VideoDuration)
@@ -42,6 +54,8 @@ CountdownToFrame = float(arguments.Countdown)
 Caption = arguments.Caption
 Mode = arguments.Mode
 ftp_image = arguments.ftp
+
+print_sts()
 
 # Use filename from configuration file unless argument is not the default value
 if arguments.Filename != 'output.jpg':
@@ -65,6 +79,8 @@ else:
 GPIO.setmode(GPIO.BCM)
 GPIO.setwarnings(False)
 
+print_sts()
+
 #Setup the trigger GPIO...
 PreviewPin = conf.PreviewPin
 CapturePin = conf.CapturePin
@@ -77,6 +93,9 @@ GPIO.setup(StatusPin, GPIO.OUT)
 GPIO.setup(ReadyPin, GPIO.OUT)
 GPIO.output(StatusPin, False)
 GPIO.output(ReadyPin, False)
+
+print_sts()
+
 
 # Webcam
 # Based on Web streaming example
@@ -101,6 +120,8 @@ class StreamingOutput(object):
                 self.condition.notify_all()
             self.buffer.seek(0)
         return self.buffer.write(buf)
+
+print_sts()
 
 class StreamingHandler(server.BaseHTTPRequestHandler):
     def do_GET(self):
@@ -145,32 +166,44 @@ class StreamingServer(socketserver.ThreadingMixIn, server.HTTPServer):
     allow_reuse_address = True
     daemon_threads = True
 
-def Webcam():
-    global camera, output, server
-    #camera = picamera.PiCamera()
-    with camera:
-        output = StreamingOutput()
+print_sts()
 
+def Webcam():
+    global camera, output, server, WebCamPreviewActive
+    #camera = picamera.PiCamera()
+    if WebCamPreviewActive == False:
+        #with camera:
+        output = StreamingOutput()
+        WebCamPreviewActive = True
         camera.start_recording(output, format='mjpeg')
         #try:
         address = ('', conf.webcam_port)
-        server = StreamingServer(address, StreamingHandler)
+        if server == 0:
+            server = StreamingServer(address, StreamingHandler)
         server.serve_forever()
         #finally:
-        camera.stop_recording()
+        #camera.stop_recording()
 	
 # Setup camera...
 camera = picamera.PiCamera()
+
+print_sts()
+
 camera.rotation = conf.rotation
+camera.hflip = conf.hflip
+camera.vflip = conf.vflip
 camera.resolution = conf.resolution
 camera.framerate = conf.framerate
 camera.annotate_text_size = 100
+
+print_sts()
 
 if arguments.Caption != 'None':
 	camera.annotate_text = arguments.Caption
 elif conf.Caption != 'None':
 	camera.annotate_text = conf.Caption
 
+print_sts()
 
 # Set filename extension based on selected image format
 x = Filename.split('.')
@@ -182,10 +215,14 @@ TimeNow = time.time()
 NextCaptureTime = TimeNow
 Finished = False
 PreviewActive = False
+WebCamPreviewActive = False
 StatusPinFast = False
+server = 0
 
-def Capture(Delay = 0):
-	global TimeNow, NextCaptureTime, File_name, File_ext, PreviewActive
+print_sts()
+
+def Capture():
+	global TimeNow, NextCaptureTime, File_name, File_ext, PreviewActive, WebCamPreviewActive, CountdownToFrame
 	
 	if ftp_image == 'yes':
 		ftp = FTP(conf.ftp_server)
@@ -193,7 +230,14 @@ def Capture(Delay = 0):
 		ftp.cwd(conf.ftp_path)
 	   
 	TimeNow = time.time()
-	NextCaptureTime = TimeNow + Delay
+	NextCaptureTime = TimeNow + CountdownToFrame
+
+	# Stop WebCam preview...
+	if WebCamPreviewActive == True:
+		print("Stopping WebCam preview...")
+		camera.stop_recording()
+		time.sleep(0.1)
+		WebCamPreviewActive = False
 
 	# Start preview...
 	if PreviewActive == False:
@@ -258,24 +302,56 @@ def Capture(Delay = 0):
 		#print("Stopping preview...")
 		camera.stop_preview()
 
+print_sts()
+
+def PreviewCallback(channel):
+	global WebCamPreviewActive, server
+	if GPIO.input(PreviewPin) == False:
+		print("Preview: Falling-edge interrupt detected")
+	else:
+		print("Preview: Rising-edge interrupt detected")
+	if WebCamPreviewActive == True:
+		print("Stopping WebCam preview...")
+		camera.stop_recording()
+		WebCamPreviewActive = False
+		server.shutdown()
+
+print_sts()
+
+def CaptureCallback(channel):
+	global WebCamPreviewActive, server
+
+	#if GPIO.input(CapturePin) == False:
+	#print("Capture: Falling-edge interrupt detected")
+	if WebCamPreviewActive == True:
+		print("Stopping WebCam preview...")
+		camera.stop_recording()
+		WebCamPreviewActive = False
+		server.shutdown()
+	#else:
+	#	print("Capture: Rising-edge interrupt detected")
+
+	
+print_sts()
+
 def TriggerMonitor():
-	global TimeNow, NextCaptureTime, Finished, PreviewActive, StatusPinFast
-	
-	GPIO.output(ReadyPin, True)
-	#print("Waiting for trigger...")
-	
+	global TimeNow, NextCaptureTime, Finished, PreviewActive, WebCamPreviewActive, StatusPinFast
+		
 	if Trigger == "GPIO":
 		if GPIO.input(CapturePin) == False: # Note trigger is active-low
 			GPIO.output(ReadyPin, False)
-			Capture(CountdownToFrame)
+			Capture()
+			GPIO.output(ReadyPin, True)
+			print("Ready!")
 		elif GPIO.input(PreviewPin) == False and PreviewActive == False: # Note trigger is active-low
 			# Start preview...
 			#print("Starting preview...")
 			#camera.start_preview()
 			#PreviewActive = True
 			print("Starting WebCam...")
-			Webcam()
-			print("WebCam closed")
+			if WebCamPreviewActive == False:
+				Webcam()
+				print("WebCam closed")
 		elif GPIO.input(PreviewPin) == True and PreviewActive == True: # Note trigger is active-low
 			# Stop preview...
 			print("Stopping preview...")
@@ -284,11 +360,16 @@ def TriggerMonitor():
 	
 	elif Trigger == "countdown":
 		GPIO.output(ReadyPin, False)
-		Capture(CountdownToFrame)
+		Capture()
+		GPIO.output(ReadyPin, True)
+		print("Ready!")
+		Finished = True
 
 	elif Trigger == "immediate":
 		GPIO.output(ReadyPin, False)
-		Capture(CountdownToFrame)
+		Capture()
+		GPIO.output(ReadyPin, True)
+		print("Ready!")
 		Finished = True
 		
 	TimeNow = time.time()
@@ -300,7 +381,21 @@ def TriggerMonitor():
 	
 	time.sleep(0.1)
 
+# Setup interrupt to monitor Preview Pin
+#GPIO.add_event_detect(PreviewPin, GPIO.RISING, callback=PreviewCallback, bouncetime=100)
+
+print_sts()
+
+# Setup interrupt to monitor Capture Pin
+GPIO.add_event_detect(CapturePin, GPIO.FALLING, callback=CaptureCallback, bouncetime=100)
+
+print_sts()
+
 try:	
+	print("Universal Camera Controller for Raspberry Pi Camera")
+	GPIO.output(ReadyPin, True)
+	print("Ready!")
+	
 	while Finished == False:
 		TriggerMonitor()
 
@@ -308,6 +403,11 @@ except KeyboardInterrupt:
 	print("Keyboard Interrupt (ctrl-c) detected - exiting program loop")
 
 finally:
+	if WebCamPreviewActive == True:
+		print("Stopping WebCam preview...")
+		camera.stop_recording()
+		WebCamPreviewActive = False
+		server.shutdown()
 	GPIO.cleanup()
 	print("Finished!")
 
