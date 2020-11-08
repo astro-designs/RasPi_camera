@@ -1,33 +1,30 @@
-# Output filename (can be over-ridden by the -o argument)
-Filename = 'output.jpg'
+# Camera configuration
 
-# Number of frames to capture:
-NumFrames = 1
-
-# Video duration (seconds)
-VideoDuration = 10
+# ********************************************
+# *** General configuration / options:     ***
+# ********************************************
 
 # Trigger option
 #Trigger = 'immediate'
 Trigger = 'GPIO'
-#Trigger = 'countdown'
+#Trigger = 'motion' # Not currently supported
+
+# Define the (BCM) pins used for trigger & status...
+PreviewPin = 2
+CapturePin = 3
+StatusPin = 4
+ReadyPin = 17
 
 # Countdown option - start capture after the count down delay (seconds)
 Countdown = 0
 
-# Capture mode - still image or video
+# Capture mode - still image, video or webcam
 Mode = 'image'
 #Mode = 'video'
 #Mode = 'webcam'
 
-# FTP option - enables automatic upload to FTP server
-ftp = 'no'
-
-# Supported raspistill options
-raspistill_o = 'output.jpg'
-
 # Supported resolutions:
-# Be sure to set the resolution in the html above to the same resolution
+# All versions of the Raspberry Pi camera are supported here but some resolutions are only supported on some versions of the camera
 #resolution=(640,480)
 resolution=(800,600)
 #resolution=(1024,768)
@@ -59,38 +56,6 @@ rotation=0
 hflip = True
 vflip = True
 
-# Image format:
-format = 'jpeg'
-#format = 'bmp'
-#format = 'tif' # Not supported?
-#format = 'gif'
-#format = 'png'
-
-# Video format:
-#format = 'mpg'
-#format = 'h264'
-
-# Preview mode:
-# Supports preview over HDMI (the usual way) or via ethernet as a WebCam server
-PreviewMode = 'HDMI'
-#PreviewMode = 'Webcam'
-#PreviewMode = 'Both'
-
-# Webcam settings...
-webcam_port = 8005
-
-# FTP settings...
-ftp_server = 'ftp.gridhost.co.uk'
-ftp_user = 'ftp@cantrills.com'
-ftp_password = 'L0st!nspace'
-ftp_path = 'public_html/cameras/media'
-
-#Define the (BCM) pins used for trigger & status...
-PreviewPin = 2
-CapturePin = 3
-StatusPin = 4
-ReadyPin = 17
-
 # Add caption to image or video (use 'None' for no caption)
 Caption = str(resolution[0]) + "x" + str(resolution[1])
 
@@ -108,6 +73,59 @@ exposure_mode = 'sports'
 # Image effects
 image_effect = 'none'
 image_effect_params = 'none'
+
+# Preview mode:
+# Supports preview over HDMI (the usual way) or via ethernet as a WebCam server
+PreviewMode = 'HDMI'
+#PreviewMode = 'Webcam'
+#PreviewMode = 'Both'
+
+
+# ********************************************
+# *** Still / single-shot capture options: ***
+# ********************************************
+
+# Number of frames to capture:
+NumFrames = 1
+
+# Output filename and path
+Filename = 'output.jpg'
+Filepath = '../media/'
+
+# Image format:
+format = 'jpeg'
+#format = 'bmp'
+#format = 'tif' # Not supported?
+#format = 'gif'
+#format = 'png'
+
+
+# ********************************************
+# *** Video capture options:               ***
+# ********************************************
+
+# Video duration (seconds)
+VideoDuration = 10
+
+# Video format:
+#format = 'mpg'
+#format = 'h264'
+
+
+# ********************************************
+# *** FTP settings                         ***
+# ********************************************
+ftp = 'no'
+ftp_server = 'ftp.gridhost.co.uk'
+ftp_user = 'ftp@cantrills.com'
+ftp_password = '**********'
+ftp_path = 'public_html/cameras/media'
+
+
+# ********************************************
+# *** Webcam settings                      ***
+# ********************************************
+webcam_port = 8005
 
 # Webcam page
 PAGE="""\

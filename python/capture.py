@@ -206,22 +206,23 @@ def Capture():
 
 	# Create filename...
 	TimeNow = time.time()
-	TimeStr = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime(TimeNow))
-	Filename = File_name + '_{counter:04d}.' + File_ext
-	#Filename = File_name + "_" + TimeStr + '.' + File_ext
-	Filepath = "../media/" + Filename
+	TimeStr = time.strftime("%Y-%m-%d_%H:%M:%S", time.gmtime(TimeNow))
+	# Add time & data to filename
+	Filename = File_name + "_" + TimeStr
+	Filename = Filename + '_{counter:04d}.' + File_ext
+	Filepath = conf.Filepath + Filename
 
 	# Delay for countdown timer
 	print(NextCaptureTime)
 	StatusPinFast = False
 	while TimeNow < NextCaptureTime:
-		print("Waiting...")
-		#StatusPinSlow = ((NextCaptureTime - TimeNow) % 2 < 1)
-		#StatusPinFast = not StatusPinFast
-		#if NextCaptureTime - TimeNow < 1:
-		#	GPIO.output(StatusPin, StatusPinFast)
-		#else:
-		#	GPIO.output(StatusPin, StatusPinSlow)
+		print(round(NextCaptureTime - TimeNow,1))
+		StatusPinSlow = ((NextCaptureTime - TimeNow) % 2 < 1)
+		StatusPinFast = not StatusPinFast
+		if NextCaptureTime - TimeNow < 1:
+			GPIO.output(StatusPin, StatusPinFast)
+		else:
+			GPIO.output(StatusPin, StatusPinSlow)
 		time.sleep(0.1)
 		TimeNow = time.time()
 
@@ -324,13 +325,6 @@ def TriggerMonitor():
 			print("Stopping preview...")
 			camera.stop_preview()
 			PreviewActive = False
-
-	elif Trigger == "countdown":
-		GPIO.output(ReadyPin, False)
-		Capture()
-		GPIO.output(ReadyPin, True)
-		print("Ready!")
-		Finished = True
 
 	elif Trigger == "immediate":
 		GPIO.output(ReadyPin, False)
