@@ -1,14 +1,3 @@
-PAGE="""\
-<html>
-<head>
-<title>Raspberry Pi WebCam</title>
-</head>
-<body>
-<center><h1>Raspberry Pi WebCam</h1></center>
-<center><img src="stream.mjpg" width="1920" height="1080"></center>
-</body>
-</html>
-"""
 # Output filename (can be over-ridden by the -o argument)
 Filename = 'output.jpg'
 
@@ -29,13 +18,13 @@ Countdown = 0
 # Capture mode - still image or video
 Mode = 'image'
 #Mode = 'video'
+#Mode = 'webcam'
 
 # FTP option - enables automatic upload to FTP server
 ftp = 'no'
 
 # Supported raspistill options
 raspistill_o = 'output.jpg'
-raspistill_e = 'jpg'
 
 # Supported resolutions:
 # Be sure to set the resolution in the html above to the same resolution
@@ -49,10 +38,10 @@ resolution=(800,600)
 #resolution=(4056,3040) # 12.3MP sensor resolution
 
 # Frame rate
-framerate=0.5
+#framerate=0.1
 #framerate=24
 #framerate=48
-#framerate=25
+framerate=25
 #framerate=50
 #framerate=29.97
 #framerate=59.94
@@ -71,7 +60,7 @@ hflip = True
 vflip = True
 
 # Image format:
-format = 'jpg'
+format = 'jpeg'
 #format = 'bmp'
 #format = 'tif' # Not supported?
 #format = 'gif'
@@ -103,4 +92,32 @@ StatusPin = 4
 ReadyPin = 17
 
 # Add caption to image or video (use 'None' for no caption)
-Caption = 'Testing'
+Caption = str(resolution[0]) + "x" + str(resolution[1])
+
+# Control shutter speed
+# 0 = automatic
+shutter_speed = 0
+
+# Control exposure time
+# 0 = automatic
+iso = 0
+
+# Control the exposure mode (see PiCamera documentation)
+exposure_mode = 'sports'
+
+# Image effects
+image_effect = 'none'
+image_effect_params = 'none'
+
+# Webcam page
+PAGE="""\
+<html>
+<head>
+<title>Raspberry Pi WebCam</title>
+</head>
+<body>
+<center><h1>Raspberry Pi WebCam</h1></center>
+<center><img src="stream.mjpg" width=\"""" + str(resolution[0]) + '\" ' + " height=\"" + str(resolution[1]) + '\"' + """></center>
+</body>
+</html>
+"""
