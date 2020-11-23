@@ -31,11 +31,13 @@ parser.add_argument('-Caption', action='store', dest='Caption', default=conf.Cap
 parser.add_argument('-Mode', action='store', dest='Mode', default=conf.Mode, help='Capture image or video')
 parser.add_argument('-ftp', action='store', dest='ftp', default=conf.ftp, help='Use -ftp enabled to send image(s) over ftp')
 parser.add_argument('-Filename', action='store', dest='Filename', default=conf.Filename, help='Output file')
-parser.add_argument('-Format', action='store', dest='Format', default=conf.format, help='Encoding to use for output file (jpeg, bmp, gif, png')
+parser.add_argument('-ImageFormat', action='store', dest='ImageFormat', default=conf.ImageFormat, help='Encoding to use for image output file (jpeg, bmp, gif, png)')
+parser.add_argument('-VideoFormat', action='store', dest='VideoFormat', default=conf.VideoFormat, help='Encoding to use for video output file (mjpeg, h264)')
 
 arguments = parser.parse_args()
 
 # Read arguments...
+# All arguments take on the values defined in the camera_conf file by default but can be overridden by the command-line argument
 NumFrames = int(arguments.NumFrames)
 FrameInterval = float(arguments.FrameInterval)
 VideoDuration = float(arguments.VideoDuration)
@@ -43,9 +45,10 @@ CountdownToFrame = float(arguments.Countdown)
 Caption = arguments.Caption
 Mode = arguments.Mode
 ftp_image = arguments.ftp
-Format = arguments.Format
 Filename = arguments.Filename
 Trigger = arguments.Trigger
+ImageFormat = arguments.ImageFormat
+VideoFormat = arguments.VideoFormat
 
 # Set the GPIO modes...
 GPIO.setmode(GPIO.BCM)
@@ -165,12 +168,22 @@ if conf.image_effect != 'none':
 	camera.image_effect_params = conf.image_effect_params
 
 if conf.Caption != 'None':
-	camera.annotate_text = conf.Caption
+	if conf.Caption == '-a 12': # Date & Time
+		TimeNow = time.time()
+		TimeStr = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime(TimeNow))
+		camera.annotate_text = TimeStr
+	elif conf.Caption == '-a 16': # Shutter settings
+		camera.annotate_text = "Shutter settings..."
+	else:
+		camera.annotate_text = conf.Caption
 
 # Set filename extension based on selected image format
 x = Filename.split('.')
 File_name = x[0]
-File_ext = Format
+if Mode == 'image':
+	File_ext = ImageFormat
+else:
+	File_ext = VideoFormat
 
 # Some misc initialisation...
 TimeNow = time.time()
@@ -209,11 +222,14 @@ def Capture():
 	TimeStr = time.strftime("%Y-%m-%d_%H:%M:%S", time.gmtime(TimeNow))
 	# Add time & data to filename
 	Filename = File_name + "_" + TimeStr
-	Filename = Filename + '_{counter:04d}.' + File_ext
+	if Mode == 'image':
+		Filename = Filename + '_{counter:04d}.' + File_ext
+	else:
+		Filename = Filename + '_%04d.' + File_ext
 	Filepath = conf.Filepath + Filename
 
 	# Delay for countdown timer
-	print(NextCaptureTime)
+	#print(NextCaptureTime)
 	StatusPinFast = False
 	while TimeNow < NextCaptureTime:
 		print(round(NextCaptureTime - TimeNow,1))
@@ -227,10 +243,10 @@ def Capture():
 		TimeNow = time.time()
 
 	# Image capture mode...
-	if Format == 'jpeg' or Format == 'bmp' or Format == 'gif' or Format == 'png':
+	if Mode == 'image' and (ImageFormat == 'jpeg' or ImageFormat == 'bmp' or ImageFormat == 'gif' or ImageFormat == 'png'):
 		GPIO.output(StatusPin, True)
-		print("Capturing...")
-		for i, filename in enumerate(camera.capture_continuous(Filepath, format=Format)):
+		print("Capturing image...")
+		for i, filename in enumerate(camera.capture_continuous(Filepath, format=ImageFormat, quality = conf.quality)):
 			print("Captured!", i+1)
 			print(filename)
 			time.sleep(FrameInterval)
@@ -243,19 +259,24 @@ def Capture():
 					time.sleep(0.1)
 					TimeNow = time.time()
 				NextCaptureTime = NextCaptureTime + FrameInterval
-				print(NextCaptureTime)
+				#print(NextCaptureTime)
 
 	# Video capture mode...
-	elif Format == 'mjpeg' or Format == 'h264':
+	elif Mode == 'video' and (VideoFormat == 'mjpeg' or VideoFormat == 'h264'):
 		GPIO.output(StatusPin, True)
 		print("Capturing video...")
-		if Format == 'mjpeg':
-			camera.start_recording(Filepath, 'mjpeg')
-		else:
-			camera.start_recording(Filepath, 'h264')
-		time.sleep(VideoDuration)
-		camera.stop_recording()
-		print("Captured!")
+		#camera.start_recording(Filepath, format=VideoFormat)
+		#camera.wait_recording(VideoDuration)
+		#camera.stop_recording()
+		for filename in camera.record_sequence(Filepath %i for i in range(NumFrames)):
+			camera.wait_recording(VideoDuration/NumFrames)
+			#print("Captured!", i+1)
+			#print(filename)
+				
+		
+	# Unsupported mode or format
+	else:
+		print("Unsupported Mode or Video/Image Format")
 
 	GPIO.output(StatusPin, False)
 
@@ -296,7 +317,9 @@ def CaptureCallback(channel):
 	#else:
 	#	print("Capture: Rising-edge interrupt detected")
 
-
+def WaitForMotion():
+	print("Motion detected!")
+	
 def TriggerMonitor():
 	global TimeNow, NextCaptureTime, Finished, PreviewActive, WebCamPreviewActive, StatusPinFast
 
@@ -326,6 +349,14 @@ def TriggerMonitor():
 			camera.stop_preview()
 			PreviewActive = False
 
+	elif Trigger == "motion":
+		WaitForMotion()
+		GPIO.output(ReadyPin, False)
+		Capture()
+		GPIO.output(ReadyPin, True)
+		print("Ready!")
+		Finished = True
+	
 	elif Trigger == "immediate":
 		GPIO.output(ReadyPin, False)
 		Capture()
@@ -349,10 +380,17 @@ def TriggerMonitor():
 GPIO.add_event_detect(CapturePin, GPIO.FALLING, callback=CaptureCallback, bouncetime=100)
 
 try:
-	print("Universal Camera Controller for Raspberry Pi Camera")
+	print("General-Purpose Camera Controller for the Raspberry Pi Camera")
 	GPIO.output(ReadyPin, True)
-	print("Ready!")
-
+	if Mode == 'image':
+		print("Image Capture Ready!")
+	elif Mode == 'video':
+		print("Video Capture Ready!")
+	elif Mode == 'webcam':
+		print("Webcam Capture Ready!")
+	else:
+		print("Unsupported mode or mode not recognised")
+		Finished = True
 	while Finished == False:
 		TriggerMonitor()
 
